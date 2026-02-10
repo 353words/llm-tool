@@ -5,35 +5,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"strings"
+	"time"
 
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
 func main() {
-	baseURL := "http://localhost:8080/v1"
-	if host := os.Getenv("KRONK_WEB_API_HOST"); host != "" {
-		baseURL = host + "/v1"
-	}
+	/*
+		baseURL := "http://localhost:8080/v1"
+		if host := os.Getenv("KRONK_WEB_API_HOST"); host != "" {
+			baseURL = host + "/v1"
+		}
 
-	llm, err := openai.New(
-		openai.WithBaseURL(baseURL),
-		openai.WithToken("x"),
-		openai.WithModel("Qwen3-8B-Q8_0"),
-	)
+			llm, err := openai.New(
+				openai.WithBaseURL(baseURL),
+				openai.WithToken("x"),
+				openai.WithModel("Qwen3-8B-Q8_0"),
+			)
+	*/
+	llm, err := openai.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Sending initial message to the model, with a list of available tools.
 	ctx := context.Background()
+
+	query := `
+	Suggest 3 time slots for a 45 minute meeting between Miki & Bill on June 7, 2026.
+	Make sure the time slots you sugget don't overlap with existing meetings.
+	`
+
 	messageHistory := []llms.MessageContent{
-		llms.TextParts(llms.ChatMessageTypeHuman, "What is the weather like in Boston and Chicago?"),
+		llms.TextParts(llms.ChatMessageTypeHuman, query),
 	}
 
-	fmt.Println("Querying for weather in Boston and Chicago..")
 	resp, err := llm.GenerateContent(ctx, messageHistory, llms.WithTools(availableTools))
 	if err != nil {
 		log.Fatal(err)
@@ -41,8 +49,10 @@ func main() {
 	messageHistory = updateMessageHistory(messageHistory, resp)
 
 	// Execute tool calls requested by the model
-	messageHistory = executeToolCalls(ctx, llm, messageHistory, resp)
-	messageHistory = append(messageHistory, llms.TextParts(llms.ChatMessageTypeHuman, "Can you compare the two?"))
+	messageHistory, err = executeToolCalls(ctx, llm, messageHistory, resp)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Send query to the model again, this time with a history containing its
 	// request to invoke a tool and our response to the tool call.
@@ -68,63 +78,48 @@ func updateMessageHistory(messageHistory []llms.MessageContent, resp *llms.Conte
 
 // executeToolCalls executes the tool calls in the response and returns the
 // updated message history.
-func executeToolCalls(ctx context.Context, llm llms.Model, messageHistory []llms.MessageContent, resp *llms.ContentResponse) []llms.MessageContent {
+func executeToolCalls(ctx context.Context, llm llms.Model, messageHistory []llms.MessageContent, resp *llms.ContentResponse) ([]llms.MessageContent, error) {
 	fmt.Println("Executing", len(resp.Choices[0].ToolCalls), "tool calls")
 	for _, toolCall := range resp.Choices[0].ToolCalls {
 		switch toolCall.FunctionCall.Name {
-		case "getCurrentWeather":
+		case "meetings":
 			var args struct {
-				Location string `json:"location"`
-				Unit     string `json:"unit"`
+				User string
+				Date string
 			}
 			if err := json.Unmarshal([]byte(toolCall.FunctionCall.Arguments), &args); err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 
-			response, err := getCurrentWeather(args.Location, args.Unit)
+			user := strings.ToLower(args.User)
+			date, err := time.Parse("2006-01-02", args.Date)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
+			}
+			meetings := UserMeetings(user, date)
+
+			data, err := json.Marshal(meetings)
+			if err != nil {
+				return nil, err
 			}
 
-			weatherCallResponse := llms.MessageContent{
+			response := llms.MessageContent{
 				Role: llms.ChatMessageTypeTool,
 				Parts: []llms.ContentPart{
 					llms.ToolCallResponse{
 						ToolCallID: toolCall.ID,
 						Name:       toolCall.FunctionCall.Name,
-						Content:    response,
+						Content:    string(data),
 					},
 				},
 			}
-			messageHistory = append(messageHistory, weatherCallResponse)
+			messageHistory = append(messageHistory, response)
 		default:
-			log.Fatalf("Unsupported tool: %s", toolCall.FunctionCall.Name)
+			return nil, fmt.Errorf("Unsupported tool: %q", toolCall.FunctionCall.Name)
 		}
 	}
 
-	return messageHistory
-}
-
-func getCurrentWeather(location string, unit string) (string, error) {
-	weatherResponses := map[string]string{
-		"boston":  "72 and sunny",
-		"chicago": "65 and windy",
-	}
-
-	if i := strings.Index(location, ","); i != -1 {
-		location = location[:i]
-	}
-	weatherInfo, ok := weatherResponses[strings.ToLower(location)]
-	if !ok {
-		return "", fmt.Errorf("no weather info for %q", location)
-	}
-
-	b, err := json.Marshal(weatherInfo)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
+	return messageHistory, nil
 }
 
 // availableTools simulates the tools/functions we're making available for
@@ -133,30 +128,22 @@ var availableTools = []llms.Tool{
 	{
 		Type: "function",
 		Function: &llms.FunctionDefinition{
-			Name:        "getCurrentWeather",
-			Description: "Get the current weather in a given location",
+			Name:        "meetings",
+			Description: "Get the meetings (busy time) of a user for a given date. Returns a list of meetings.",
 			Parameters: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"location": map[string]any{
+					"user": map[string]any{
 						"type":        "string",
-						"description": "The city and state, e.g. San Francisco, CA",
+						"description": "User name",
 					},
-					"unit": map[string]any{
-						"type": "string",
-						"enum": []string{"fahrenheit", "celsius"},
+					"date": map[string]any{
+						"type":        "string",
+						"description": "date in YYYY-MM-DD format",
 					},
 				},
-				"required": []string{"location"},
+				"required": []string{"user", "date"},
 			},
 		},
 	},
-}
-
-func showResponse(resp *llms.ContentResponse) string {
-	b, err := json.MarshalIndent(resp, "", "  ")
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(b)
 }
