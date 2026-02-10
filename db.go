@@ -20,6 +20,22 @@ func UserMeetings(user string, date time.Time) []Meeting {
 	return meetings
 }
 
+func QueryMeetings(user string, date time.Time) []Meeting {
+	var meetings []Meeting
+
+	for _, m := range meetingDB {
+		if m.User != user {
+			continue
+		}
+		if !sameDate(m.Start, date) {
+			continue
+		}
+		meetings = append(meetings, m)
+	}
+
+	return meetings
+}
+
 func sameDate(t1, t2 time.Time) bool {
 	return t1.Year() == t2.Year() && t1.Month() == t2.Month() && t1.Day() == t2.Day()
 }
