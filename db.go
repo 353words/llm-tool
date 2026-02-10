@@ -1,6 +1,13 @@
 package main
 
-import "time"
+import (
+	_ "embed"
+	"encoding/csv"
+	"errors"
+	"io"
+	"strings"
+	"time"
+)
 
 type Meeting struct {
 	User  string
@@ -49,25 +56,44 @@ func asTime(s string) time.Time {
 	return t
 }
 
-var meetingDB = []Meeting{
-	{
-		User:  "miki",
-		Start: asTime("2026-06-07 08:30"),
-		End:   asTime("2026-06-07 09:30"),
-	},
-	{
-		User:  "miki",
-		Start: asTime("2026-06-07 13:30"),
-		End:   asTime("2026-06-07 14:15"),
-	},
-	{
-		User:  "bill",
-		Start: asTime("2026-06-07 09:00"),
-		End:   asTime("2026-06-07 09:45"),
-	},
-	{
-		User:  "bill",
-		Start: asTime("2026-06-07 13:00"),
-		End:   asTime("2026-06-07 14:00"),
-	},
+var meetingDB []Meeting
+
+func init() {
+	r := csv.NewReader(strings.NewReader(csvData))
+	for {
+		row, err := r.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		m := Meeting{
+			User: row[0],
+		}
+
+		date, err := time.Parse("2006-01-02", row[1])
+		if err != nil {
+			panic(err)
+		}
+
+		start, err := time.Parse("15:04", row[2])
+		if err != nil {
+			panic(err)
+		}
+		m.Start = time.Date(date.Year(), date.Month(), date.Day(), start.Hour(), start.Minute(), 0, 0, time.UTC)
+
+		end, err := time.Parse("15:04", row[3])
+		if err != nil {
+			panic(err)
+		}
+		m.End = time.Date(date.Year(), date.Month(), date.Day(), end.Hour(), end.Minute(), 0, 0, time.UTC)
+
+		meetingDB = append(meetingDB, m)
+	}
 }
+
+//go:embed meetings.csv
+var csvData string
