@@ -43,12 +43,12 @@ var Tools = []llms.Tool{
 }
 
 func findMeetings(ctx context.Context, llm llms.Model, userPrompt string) (string, error) {
-	messageHistory := []llms.MessageContent{
+	messages := []llms.MessageContent{
 		llms.TextParts(llms.ChatMessageTypeSystem, systemPrompt),
 		llms.TextParts(llms.ChatMessageTypeHuman, userPrompt),
 	}
 
-	resp, err := llm.GenerateContent(ctx, messageHistory, llms.WithTools(Tools))
+	resp, err := llm.GenerateContent(ctx, messages, llms.WithTools(Tools))
 	if err != nil {
 		return "", err
 	}
@@ -58,7 +58,7 @@ func findMeetings(ctx context.Context, llm llms.Model, userPrompt string) (strin
 	for _, tc := range respchoice.ToolCalls {
 		assistantResponse.Parts = append(assistantResponse.Parts, tc)
 	}
-	messageHistory = append(messageHistory, assistantResponse)
+	messages = append(messages, assistantResponse)
 
 	for _, toolCall := range respchoice.ToolCalls {
 		switch toolCall.FunctionCall.Name {
@@ -97,13 +97,13 @@ func findMeetings(ctx context.Context, llm llms.Model, userPrompt string) (strin
 					},
 				},
 			}
-			messageHistory = append(messageHistory, response)
+			messages = append(messages, response)
 		default:
 			return "", fmt.Errorf("unsupported tool: %q", toolCall.FunctionCall.Name)
 		}
 	}
 
-	resp, err = llm.GenerateContent(ctx, messageHistory, llms.WithTools(Tools))
+	resp, err = llm.GenerateContent(ctx, messages, llms.WithTools(Tools))
 	if err != nil {
 		return "", err
 	}
@@ -122,7 +122,8 @@ func main() {
 		openai.WithToken("x"),
 		// openai.WithModel("Qwen3-8B-Q8_0"),
 		// openai.WithModel("Qwen2.5-VL-7B-Instruct-Q2_K_L"),
-		openai.WithModel("Ministral-3-8B-Instruct-2512-Q2_K"),
+		// openai.WithModel("Ministral-3-8B-Instruct-2512-Q2_K"),
+		openai.WithModel("Ministral-3-14B-Instruct-2512-Q4_0"),
 	)
 	// llm, err := openai.New()
 	if err != nil {
