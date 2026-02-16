@@ -112,20 +112,9 @@ func findMeetings(ctx context.Context, llm llms.Model, userPrompt string) (strin
 }
 
 func main() {
-	baseURL := "http://localhost:8080/v1"
-	if host := os.Getenv("KRONK_WEB_API_HOST"); host != "" {
-		baseURL = host + "/v1"
-	}
-
 	llm, err := openai.New(
-		openai.WithBaseURL(baseURL),
-		openai.WithToken("x"),
-		// openai.WithModel("Qwen3-8B-Q8_0"),
-		// openai.WithModel("Qwen2.5-VL-7B-Instruct-Q2_K_L"),
-		// openai.WithModel("Ministral-3-8B-Instruct-2512-Q2_K"),
-		openai.WithModel("Ministral-3-14B-Instruct-2512-Q4_0"),
+		openai.WithModel("gpt-4o-mini"),
 	)
-	// llm, err := openai.New()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
