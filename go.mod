@@ -1,11 +1,5 @@
 module llmtools
 
-go 1.25.7
+go 1.26.0
 
-require github.com/tmc/langchaingo v0.1.14
-
-require (
-	github.com/dlclark/regexp2 v1.10.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
-	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
-)
+require github.com/ardanlabs/ai-training v0.0.0-20260216214226-f127942c4f0e
