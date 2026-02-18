@@ -12,7 +12,7 @@ author = "mikit"
 
 LLM are great, but they are trained on public data sets.
 In some cases, you need the LLM to use data that's not publicly available or that's frequently changing.
-There are several way to make such data available to LLMs:
+There are several ways to make such data available to LLMs:
 
 - Tool/function calls
 - [Retrieval-augmented generation](https://en.wikipedia.org/wiki/Retrieval-augmented_generation) (aka RAG)
@@ -22,7 +22,7 @@ In coding agents, you can also add skills.
 
 In this post we'll focus on function calling.
 
-### How It Works?
+### How Does It Work?
 
 When asking the LLM, you also provide a description of available tools.
 If the LLM need more information, it'll return a reply that contains a tool call.
@@ -55,7 +55,7 @@ You might want to use other models, you can query HuggingFace to find a suitable
 
 ### Application Overview
 
-We're going to create an agent that suggest meeting times between two people.
+We're going to create an agent that suggests meeting times between two people.
 The agent uses the `QueryMeetings` function that returns what current meetings a user has at a given date.
 
 _Note: You can see the implementation of `QueryMeetings` in [`db.go`](https://github.com/353words/llm-tool/blob/main/db.go)._
@@ -79,10 +79,9 @@ The system prompt instructs the LLM how to answer and that it should use our too
 026 
 027 Return exactly and only the proposed time ranges as HH:MM-HH:MM, one per line, with no extra text.
 028 `
-
 ```
 
-Listing 1 shows the system prompt, it instructs the LLM to work with the `meetings` tool puts guardrails around the answer.
+Listing 1 shows the system prompt, it instructs the LLM to work with the `meetings` tool and puts guardrails around the answer.
 
 
 ### Tool Definition
@@ -116,12 +115,12 @@ Listing 1 shows the system prompt, it instructs the LLM to work with the `meetin
 ```
 
 Listing 2 shows the tool definition.
-On line 30 you create a slices of `llm.Tool`.
+On line 30 you create a slice of `llm.Tool`.
 On lines 32-51 you specify the `meetings` tool.
 On lines 36 you define the parameters. The `properties` key on line 38 defines the tool arguments.
 On line 48 you specify that both `user` and `date` are required.
 
-There's no way too define a schema for the tool output.
+There's no way to define a schema for the tool output.
 
 ### Tool Calling
 
@@ -228,10 +227,9 @@ Listing 4 shows `findMeetings`.
 On line 82-85 you create the initial call to the LLM.
 On line 88 you start a for loop for communicating with the LLM, it'll end when there are no more tool calls.
 On lines 89-103 you call the LLM and append the result to the current message history.
-On line 95 you check if there are no more tool call and return the final answer on line 86.
+On line 95 you check if there are no more tool calls and return the final answer on line 86.
 On lines 105-129 you go over tool calls and if there's a call to `meetings` you call it and add the result to the message history.
 On lines 118-119 you add the ToolCallID and Name so the LLM will be able to connect the response to the tool call.
-
 
 ### Main
 
