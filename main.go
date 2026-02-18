@@ -123,7 +123,9 @@ func main() {
 		// openai.WithModel("Qwen3-8B-Q8_0"),
 		// openai.WithModel("Qwen2.5-VL-7B-Instruct-Q2_K_L"),
 		// openai.WithModel("Ministral-3-8B-Instruct-2512-Q2_K"),
-		openai.WithModel("Ministral-3-14B-Instruct-2512-Q4_0"),
+		//openai.WithModel("Ministral-3-14B-Instruct-2512-Q4_0"),
+		//openai.WithModel("Qwen2.5-VL-3B-Instruct-Q8_0"),
+		openai.WithModel("Qwen3-0.6B-Q8_0"),
 	)
 	// llm, err := openai.New()
 	if err != nil {
