@@ -15,29 +15,13 @@ type Meeting struct {
 	End   time.Time
 }
 
-func UserMeetings(user string, date time.Time) []Meeting {
+func QueryMeetings(user string, date time.Time) []Meeting {
 	var meetings []Meeting
 
 	for _, m := range meetingDB {
 		if m.User == user && sameDate(m.Start, date) {
 			meetings = append(meetings, m)
 		}
-	}
-
-	return meetings
-}
-
-func QueryMeetings(user string, date time.Time) []Meeting {
-	var meetings []Meeting
-
-	for _, m := range meetingDB {
-		if m.User != user {
-			continue
-		}
-		if !sameDate(m.Start, date) {
-			continue
-		}
-		meetings = append(meetings, m)
 	}
 
 	return meetings
